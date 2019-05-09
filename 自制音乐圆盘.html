@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>VK后花园</title>
+</head>
+<style>
+    * {
+        padding: 0px;
+        margin: 0px;
+        font-family: "微软雅黑";
+        color: #91C9E9;
+    }
+
+    body {
+        /* overflow-x: hidden; */
+		background-color:#505050;
+    }
+
+    .center {
+        text-align: center;
+    }
+
+    .auto {
+        display: block;
+        margin: 0 auto;
+    }
+
+    .fixed {
+        position: fixed;
+    }
+
+    .absolute {
+        position: absolute;
+    }
+
+    .relative {
+        position: relative;
+    }
+
+    .top {
+        top: 0px;
+    }
+
+    .bottom {
+        bottom: 0px;
+    }
+
+    .left {
+        left: 0px;
+    }
+
+    .right {
+        right: 0px;
+    }
+
+    .z-100 {
+        z-index: 100;
+    }
+
+    .btn {
+        color: #5F7E85;
+        display: inline-block;
+        padding: 3px 10px;
+        margin-top: 5px;
+        margin-bottom: 5px;
+        text-decoration: none;
+        border: 1px solid #808080;
+        background: #BCC8CC;
+        border-radius: 5px;
+    }
+
+    .btn:active {
+        background: #65AEC4;
+    }
+
+    .btn:hover {
+        color: #1C383F;
+    }
+
+    #fixed-background {
+        width: 100%;
+        height: 100%;
+        z-index: 2;
+        /* background:#616161; */
+        /* background-image: url(""); */
+        /* background-size:cover;
+        background-repeat: no-repeat; */
+        /* border: 1px solid #747474; */
+    }
+
+    #fixed-background:after {
+        content: '图片显示错误';
+        text-align: left;
+        /* line-height: 1000px; */
+        position: fixed;
+        top: 0px;
+        left: 0px;
+        width: 100%;
+        height: 100%;
+        z-index: 1;
+        background: #616161;
+    }
+
+    #audio-panel {
+        display: block;
+        /* width: 100%; */
+        padding: 20px;
+    }
+
+    #audio-player {}
+
+    #audio-canvas {
+        /* margin-left:40px; */
+        display: block;
+        margin: 0 auto;
+        background: transparent;
+    }
+
+    #web-info {
+        width: 100%;
+        /* height: 120px; */
+        /* border: 1px solid #747474; */
+    }
+
+    .a-default {
+        text-decoration-line: none;
+
+    }
+
+    #ul-line {
+        list-style-type: none;
+        width: 100%;
+        /* height: auto; */
+        padding: 10px 0px;
+        /* line-height: 30px; */
+        text-align: center;
+        margin: 0 auto;
+        background: #747474;
+    }
+
+    #ul-line li {
+        /* margin: 0 auto; */
+        padding: 0px;
+        display: inline-block;
+        height: 40px;
+        line-height: 40px;
+        width: 200px;
+        /* padding:10px; */
+        /* margin: 0px 10px; */
+        text-align: center;
+        /* background: #5F7E85; */
+        margin: 0 auto;
+        /* float: left; */
+    }
+</style>
+
+<body>
+    <div class="relative z-100" id="audio-panel">
+        <h2 class="center">音乐频谱</h2>
+        <input class="auto" id="fileChooser" type="file">
+        <h3 id="info" class="center">waiting</h3>
+        <div class="center" id="">
+            <a class="btn" href="javascript:void(0);" id="music-start">开始</a>
+            <a class="btn" href="javascript:void(0);" id="music-stop">停止</a>
+        </div>
+        <div class="center" id="">
+            <span>音量：</span>
+            <input type="range" min="0" max="100" id="volume" />
+        </div>
+    </div>
+
+    <div class="relative z-100" id="">
+        <canvas class="" id="audio-canvas"></canvas>
+        <div class="" id='web-info'>
+            <ul id="ul-line">
+                <li>
+                    <a target="_bank" class="a-default" href="http://www.miitbeian.gov.cn">滇ICP备18001429号</a>
+                </li>
+            </ul>
+            <ul id="ul-line">
+                <li>1</li>
+                <li>1</li>
+                <li>1</li>
+            </ul>
+
+        </div>
+    </div>
+</body>
+<script>
+    var Visualizer = function () {
+        this.file = null;
+        this.fileName = null;
+        this.url = null;
+        this.source = null;
+        this.timer = null;
+        this.audioContext = null;
+        this.gainNode = null;
+        this.canvas = null;
+        this.infoUpdateId = null;
+        this.info = document.getElementById("info");
+        this.forceStop = false;
+        this.playing = true;
+        this.canvasID = "audio-canvas";
+        this.musicStopID = "music-stop";
+        this.musicStartID = "music-start";
+        this.volumeID = "volume";
+        this.up = false;
+        this.down = true;
+        this.nowColor = null
+        this.color1 = null
+        this.color2 = null
+        this.color3 = null
+        // 图像设置
+        this.startColor = 150;//开始的R,G,B颜色
+        this.endColor = 230;//结束的R,G,B颜色
+        this.colorTime = 25;//变化颜色的周期
+        this.changeOp = true;//呼吸变化
+        this.changeColor = true;//颜色变化
+        this.textColorChangeMark = false;//文字是否跟随变化
+        this.opChange = 0.01;//颜色透明度变化的值
+        this.opacity = 0.8;//颜色透明度
+        this.minOp = 0.5;//最低透明度
+        this.maxOp = 1;//最大透明度
+        this.strokeColor = "#5F5F5F";//线条颜色
+        this.lineStyle = "round";//线条末端样式
+        this.lineBlock = 3;//线的粗细
+        this.lineLength = 1;//线的基础长度
+        this.radius = 180;//圆的半径
+        this.lineCount = 400;//线条数
+        this.angle = 360 / this.lineCount;//旋转角度---360/线条数
+        this.changeAngle = 0;//旋转速度--0为不限制
+        this.sensitivity = 40;//音频的敏感度
+        this.volume = 10;//音频大小
+        this.fontSize = 18;//字体大小
+        this.fontHeight = 30;//字体行高
+        this.fontStyle = "微软雅黑";//字体类型
+    }
+    Visualizer.prototype = {
+        ini: function () {
+            // this.file = new File()
+            this._prepareAPI();
+            this._addEventListner();
+            this._initCanvas();
+            this._onChangeMusicState();
+            this._getColorRandom();
+        },
+        number16Auto: function (number, length) {
+            return (Array(length).join("0") + number).slice(-length);
+        },
+        _getColorRandom: function () {
+            // var op = this.opacity;//Math.floor(Math.random() * 0.5) + 0.5;
+            var that = this;
+            var colorNum1 = Math.floor(Math.random() * this.startColor) +
+                (this.endColor - this.startColor)
+            var colorNum2 = Math.floor(Math.random() * this.startColor) +
+                (this.endColor - this.startColor)
+            var colorNum3 = Math.floor(Math.random() * this.startColor) +
+                (this.endColor - this.startColor)
+
+            that.color1 = colorNum1;
+            that.color2 = colorNum2;
+            that.color3 = colorNum3;
+        }, getNowColor: function (op) {
+            var that = this;
+            var colorNum1 = that.color1;
+            var colorNum2 = that.color2;
+            var colorNum3 = that.color3;
+            return "rgba(" + colorNum1 + "," +
+                colorNum2 + "," + colorNum3 + "," + op + ")";
+        }, _timeToChangeColor: function () {
+            var that = this;
+            var op = that.opacity;
+            var opChange = that.opChange;
+            that.timer = setInterval(function () {
+                op = Math.round(parseFloat(op) * 100) / 100;
+                that.opacity = op;
+                // console.log(op);
+                that.nowColor = that.getNowColor(op);
+                // console.log(that.nowColor);
+                if (that.down && op > that.minOp) {
+                    op -= opChange;
+                }
+                if (that.up && op < that.maxOp) {
+                    op += opChange;
+                }
+
+                if (op <= that.minOp || op >= that.maxOp) {
+                    that.up = !that.up;
+                    that.down = !that.down;
+                }
+                if (op <= that.minOp && that.changeColor) {
+                    that._getColorRandom();
+                }
+            }, that.colorTime);
+        },
+        _prepareAPI: function () {
+            window.AudioContext = window.AudioContext || window.webkitAudioContext ||
+                window.mozAudioContext || window.msAudioContext;
+
+            window.requestAnimationFrame = window.requestAnimationFrame || window.webkitRequestAnimationFrame;
+
+            try {
+                this.audioContext = new AudioContext();
+                this.canvas = document.getElementById(this.canvasID);
+            } catch (e) {
+                console.log("浏览器不支持AudioContext");
+                console.log(e);
+            }
+        },
+        _addEventListner: function () {
+            var that = this,
+                audioInput = document.getElementById("fileChooser"),
+                dropContainer = document.getElementById("audio-canvas");
+            // that.file = "";
+
+            audioInput.onchange = function () {
+                if (audioInput.files.length != 0) {
+                    that.file = audioInput.files[0];
+                    // console.log(that.file)
+                    that.fileName = that.file.name;
+                    that._start();
+                    that._updateInfo("uploading", true);
+                }
+            };
+        },
+        _initCanvas: function () {
+            var canvas = this.canvas;
+            window.addEventListener('resize', resize, false);
+            function resize() {
+                var WIDTH = document.getElementsByTagName("body")[0].clientWidth;
+                var HEIGHT = document.getElementsByTagName("body")[0].clientHeight;
+                canvasSize(WIDTH, HEIGHT);
+            }
+            var canvasSize = function (w, h) {
+                canvas.height = 920;
+                canvas.width = w - 80;
+            }
+            resize();
+
+        },
+        _start: function () {
+            var that = this,
+                file = this.file,
+                fr = new FileReader();
+
+            fr.onload = function (e) {
+                var fileResult = e.target.result;
+                var audioContext = that.audioContext;
+                if (audioContext == null) {
+                    return;
+                }
+                that._updateInfo("Decode the audio", true);
+                audioContext.decodeAudioData(fileResult, function (buffer) {
+                    that._updateInfo("Decode succussfully start the function", true);
+                    that._visualize(audioContext, buffer);
+                }, function (e) {
+                    that._updateInfo("Fail to Decode the File", false);
+                    console.log("文件解码失败!!");
+                });
+            };
+            fr.onerror = function (e) {
+                that._updateInfo("Fail to Read the File", false);
+                console.log(e);
+            }
+            that._updateInfo("Starting read the file", true);
+            fr.readAsArrayBuffer(file);
+        },
+        _visualize: function (audioContext, buffer) {
+            var audioBufferSourceNode = audioContext.createBufferSource(),
+                analyser = audioContext.createAnalyser(),
+                gainNode = audioContext.createGain(),
+                that = this;
+
+            gainNode.connect(audioContext.destination);
+            that._onChangeMusicVolume(gainNode);
+
+            audioBufferSourceNode.connect(analyser);
+            analyser.connect(gainNode);
+
+            audioBufferSourceNode.buffer = buffer;
+            if (!audioBufferSourceNode.start) {
+                audioBufferSourceNode.start = audioBufferSourceNode.noteOn;
+                audioBufferSourceNode.stop = audioBufferSourceNode.noteOff;
+            }
+            audioBufferSourceNode.start();
+            audioBufferSourceNode.onended = function () {
+                that._audioEnd(that);
+            }
+            if (that.source !== null) {
+                that.forceStop = true;
+                that.source.stop();
+            }
+
+            that.source = audioBufferSourceNode;
+            that._drawSpectrum(analyser);
+
+            if (audioContext.state === 'running') {
+                that._updateInfo("playing", false);
+                that.info = "playing";
+            } else if (audioContext.state === 'suspended') {
+                that._updateInfo("stoping", false);
+                that.info = "stoping";
+            }
+        },
+        _drawSpectrum: function (analyser) {
+            var that = this;
+            var canvas = this.canvas;
+            var cxt = canvas.getContext("2d");
+            var lineBlock = this.lineBlock;
+            var lineCount = this.lineCount;
+            var radius = this.radius;
+            var lineLength = this.lineLength;
+            var lineStyle = this.lineStyle;
+            var angle = this.angle;
+            var animateAngle = 0;
+            var changeAngle = this.changeAngle / 200.0;
+            var sensitivity = this.sensitivity / 100;
+            var len = analyser.frequencyBinCount;
+            var dataArray = new Uint8Array(len);
+            if (that.changeOp) {
+                if (that.timer == null) {
+                    that._timeToChangeColor();
+                }
+            } else {
+                that.nowColor = that.getNowColor(1);
+                if (that.changeColor) {
+                    that._getColorRandom(1);
+                }
+            }
+            var i = 1;
+            var drawMeter = function () {
+                analyser.getByteFrequencyData(dataArray);
+                // if(i-- >= 0){
+                // console.log(dataArray)
+                // }
+                var step = Math.round((dataArray.length / lineCount));
+
+                cxt.strokeStyle = that.nowColor;//that.strokeColor;
+                cxt.fillStyle = that.nowColor;//that.strokeColor;
+                cxt.textAlign = "center";
+                cxt.textBaseAlign = "middle";
+                cxt.font = that.fontSize + "px" + " " + that.fontStyle;
+                cxt.lineWidth = lineBlock;
+                cxt.lineCap = lineStyle;
+                cxt.clearRect(0, 0, canvas.width, canvas.height);
+                if (animateAngle >= 360) {
+                    animateAngle = 0;
+                } else {
+                    animateAngle += changeAngle;
+                }
+                var x0 = (canvas.width / 2);
+                var y0 = 30 < canvas.height / 2 ? (canvas.height / 2 - 30) : (canvas.height / 2);
+
+                that._textAuto(cxt, that.fileName, x0, y0);
+                // cxt.fillText(that.fileName, x0, y0);
+
+
+                for (var i = 0; i < lineCount / 2; i++) {
+                    var value = dataArray[parseInt((step * i) / 2)] * sensitivity;
+                    cxt.beginPath();
+                    var x1 = x0 + radius * Math.sin((angle * i + animateAngle) / 180 * Math.PI);
+                    var y1 = y0 - radius * Math.cos((angle * i + animateAngle) / 180 * Math.PI);
+                    cxt.moveTo(x1, y1);
+                    var x2 = x0 + (radius + lineLength + value) * Math.sin((angle * i + animateAngle) / 180 * Math.PI);
+                    var y2 = y0 - (radius + lineLength + value) * Math.cos((angle * i + animateAngle) / 180 * Math.PI);
+                    cxt.lineTo(x2, y2);
+                    cxt.stroke();
+                    cxt.closePath();
+                }
+
+                for (var i = lineCount - 1; i >= lineCount / 2; i--) {
+                    var j = lineCount - i;
+                    var value = dataArray[parseInt((step * j) / 2)] * sensitivity;
+                    cxt.beginPath();
+                    var x1 = x0 + radius * Math.sin((angle * i + animateAngle) / 180 * Math.PI);
+                    var y1 = y0 - radius * Math.cos((angle * i + animateAngle) / 180 * Math.PI);
+                    cxt.moveTo(x1, y1);
+                    var x2 = x0 + (radius + lineLength + value) * Math.sin((angle * i + animateAngle) / 180 * Math.PI);
+                    var y2 = y0 - (radius + lineLength + value) * Math.cos((angle * i + animateAngle) / 180 * Math.PI);
+                    cxt.lineTo(x2, y2);
+                    cxt.stroke();
+                    cxt.closePath();
+                }
+
+                requestAnimationFrame(drawMeter);
+            }
+            requestAnimationFrame(drawMeter);
+        },
+        _audioEnd: function (instance) {
+            // var that = this;
+            if (this.forceStop) {
+                this.forceStop = false;
+                return;
+            }
+            console.log("audio end");
+            var canvas = this.canvas,
+                cxt = canvas.getContext("2d");
+            cxt.clearRect(0, 0, canvas.width, canvas.height);
+            window.clearInterval(this.timer);
+            this.timer = null;
+
+            text = "waiting";
+            document.getElementById("info").innerHTML = text;
+            instance.info = text;
+            document.getElementById("fileChooser").value = '';
+        },
+        _onChangeMusicState: function () {
+            var that = this;
+            var stopID = this.musicStopID;
+            var startID = this.musicStartID;
+            var stopDoc = document.getElementById(stopID);
+            var startDoc = document.getElementById(startID);
+            var ac = that.audioContext;
+            stopDoc.onclick = function () {
+                ac.suspend().then(function () {
+
+                    if (ac.state === 'running') {
+                        that._updateInfo("playing", false);
+                        that.info = "playing";
+                        that._timeToChangeColor();
+                    } else if (ac.state === 'suspended') {
+                        that._updateInfo("stoping", false);
+                        that.info = "stoping";
+                        window.clearInterval(that.timer);
+                        that.timer = null;
+                    }
+                })
+            }
+            startDoc.onclick = function () {
+                ac.resume().then(function () {
+                    if (ac.state === 'running') {
+                        that._updateInfo("playing", false);
+                        that.info = "playing";
+                        that._timeToChangeColor();
+                    } else if (ac.state === 'suspended') {
+                        that._updateInfo("stoping", false);
+                        that.info = "stoping";
+                        window.clearInterval(that.timer);
+                        that.timer = null;
+                    }
+                })
+            }
+        },
+        _onChangeMusicVolume: function (gainNode) {
+            var volumeID = this.volumeID;
+            var volumeDoc = document.getElementById(volumeID);
+            this.volume = volumeDoc.value;
+            gainNode.gain.value = this.volume / 100;
+            volumeDoc.onchange = function () {
+                this.volume = volumeDoc.value;
+                gainNode.gain.value = this.volume / 100;
+            }
+        },
+        _updateInfo: function (text, mark) {
+            var infoBar = document.getElementById("info"),
+                dots = "...",
+                i = 0,
+                that = this;
+            infoBar.innerHTML = text + dots.substring(0, i++);
+            if (this.infoUpdateId !== null) {
+                clearTimeout(this.infoUpdateId);
+            };
+            if (mark) {
+                var animateDot = function () {
+                    if (i > 3) {
+                        i = 0;
+                    }
+                    infoBar.innerHTML = text + dots.substring(0, i++);
+                    that.infoUpdateId = setTimeout(animateDot, 250);
+                }
+                this.infoUpdateId = setTimeout(animateDot, 250);
+            }
+        },
+        _textAuto: function (cxt, string, x, y) {
+            var str = string.substring(0, string.length - 4);
+            var that = this;
+            var maxLen = parseInt(that.radius / (that.fontSize / 2));
+            var par = parseInt(str.length / maxLen + 0.99999999);
+            if (that.textColorChangeMark) {
+                cxt.fillStyle = that.getNowColor(1);
+            }
+
+            for (var i = 0; i < par; i++) {
+                var y0 = y + parseFloat(i - par / 2) * that.fontHeight +
+                    (that.fontSize) + (that.fontHeight - that.fontSize) / 2;
+                cxt.fillText(str.substring(i * maxLen, (i + 1) * maxLen), x, y0);
+            }
+        }
+    }
+    window.onload = function () {
+        new Visualizer().ini();
+    }
+
+</script>
+
+</html>
